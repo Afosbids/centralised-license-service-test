@@ -12,6 +12,7 @@ A full-stack license management system with FastAPI backend and React frontend, 
 - Seat-based License Control
 - PostgreSQL Database with Connection Pooling
 - **API Key Authentication** for secure access
+- **Rate Limiting** to prevent abuse
 
 ## Tech Stack
 
@@ -124,6 +125,57 @@ curl -X DELETE -H "X-API-Key: YOUR_KEY" \
 Run the authentication test script:
 ```bash
 bash test_auth.sh
+```
+
+## Rate Limiting
+
+### Overview
+All API endpoints are rate-limited to prevent abuse and ensure fair usage. Rate limits are enforced per IP address.
+
+### Rate Limits by Endpoint Type
+
+| Endpoint Type | Limit | Examples |
+|---------------|-------|----------|
+| **API Key Management** | 10 requests/minute | `POST /api-keys/` |
+| **Read Operations** | 100 requests/minute | `GET /brands/`, `GET /customers/` |
+| **Write Operations** | 30 requests/minute | `POST /brands/`, `PUT /licenses/{id}/suspend` |
+| **License Operations** | 60 requests/minute | `POST /licenses/validate`, `POST /licenses/activate` |
+
+### Rate Limit Headers
+
+Every response includes rate limit information in headers:
+
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1735473600
+```
+
+- `X-RateLimit-Limit`: Maximum requests allowed in the time window
+- `X-RateLimit-Remaining`: Number of requests remaining
+- `X-RateLimit-Reset`: Unix timestamp when the limit resets
+
+### Rate Limit Exceeded
+
+When you exceed the rate limit, you'll receive a `429 Too Many Requests` response:
+
+```json
+{
+  "error": "Rate limit exceeded: 100 per 1 minute"
+}
+```
+
+**Best Practices:**
+1. **Monitor headers**: Check `X-RateLimit-Remaining` to avoid hitting limits
+2. **Implement backoff**: Wait for `X-RateLimit-Reset` before retrying
+3. **Batch requests**: Combine multiple operations when possible
+4. **Cache responses**: Store frequently accessed data locally
+
+### Testing Rate Limits
+
+Run the rate limiting test script:
+```bash
+bash test_rate_limit.sh
 ```
 
 ## Manual Setup (Without Docker)
