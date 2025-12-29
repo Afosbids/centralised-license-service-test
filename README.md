@@ -338,19 +338,26 @@ DATABASE_URL=sqlite:///./license_system.db
 ### Activations
 - `DELETE /activations/{id}` - Deactivate a machine
 
-## Testing
-
-Run the verification script:
-```bash
-bash verify_backend.sh
-```
-
 ## Environment Variables
+
+### Backend Configuration (`backend/.env`)
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | Database connection string | `sqlite:///./license_system.db` |
-| `PYTHONUNBUFFERED` | Python output buffering | `1` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, etc.) | `INFO` |
+| `LOG_FORMAT` | Log format (json, text) | `json` |
+| `CORS_ORIGINS` | Comma-separated allowed origins | `http://localhost:5173,https://localhost` |
+| `API_KEY_PREFIX` | Prefix for generated API keys | `lsk_live_` |
+| `RATE_LIMIT_READ` | Read endpoint rate limit | `100` |
+| `RATE_LIMIT_WRITE`| Write endpoint rate limit | `30` |
+| `APP_NAME` | Application name for API docs | `Centralized License System` |
+
+### Frontend Configuration (`frontend/.env`)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL`| Base URL for the backend API | `https://localhost/api` |
 
 ## Migration from SQLite to PostgreSQL
 

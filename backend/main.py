@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from .logging_config import setup_logging, get_logger
 from .middleware import RequestIDMiddleware, LoggingMiddleware
 import uuid
+import os
 
 # Setup logging
 setup_logging()
@@ -21,7 +22,10 @@ logger.info("Database tables created/verified")
 
 # Rate limiting configuration
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI(title="Centralized License System", version="1.0.0")
+app = FastAPI(
+    title=os.getenv("APP_NAME", "Centralized License System"),
+    version=os.getenv("APP_VERSION", "1.0.0")
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -30,12 +34,7 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LoggingMiddleware)
 
 # CORS configuration
-origins = [
-    "http://localhost:5173",  # React app default port
-    "http://127.0.0.1:5173",
-    "https://localhost",
-    "https://127.0.0.1",
-]
+origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,https://localhost").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,7 +59,7 @@ def read_root():
 
 # API Key Management Endpoints
 @app.post("/api-keys/", response_model=schemas.APIKeyResponse)
-@limiter.limit("10/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_AUTH', '10')}/minute")
 def create_api_key(request: Request, api_key: schemas.APIKeyCreate, db: Session = Depends(get_db)):
     """Generate a new API key. The plain key is only shown once!"""
     # Generate plain API key
@@ -83,13 +82,13 @@ def create_api_key(request: Request, api_key: schemas.APIKeyCreate, db: Session 
     )
 
 @app.get("/api-keys/", response_model=List[schemas.APIKey])
-@limiter.limit("100/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_READ', '100')}/minute")
 def list_api_keys(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     """List all API keys (requires authentication)"""
     return crud.list_api_keys(db, skip=skip, limit=limit)
 
 @app.delete("/api-keys/{api_key_id}")
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def revoke_api_key(request: Request, api_key_id: int, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     """Revoke (deactivate) an API key"""
     db_api_key = crud.revoke_api_key(db, api_key_id=api_key_id)
@@ -99,7 +98,7 @@ def revoke_api_key(request: Request, api_key_id: int, db: Session = Depends(get_
 
 # Brand Endpoints
 @app.post("/brands/", response_model=schemas.Brand)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def create_brand(request: Request, brand: schemas.BrandCreate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_brand = crud.get_brand_by_name(db, name=brand.name)
     if db_brand:
@@ -107,26 +106,26 @@ def create_brand(request: Request, brand: schemas.BrandCreate, db: Session = Dep
     return crud.create_brand(db=db, brand=brand)
 
 @app.get("/brands/", response_model=List[schemas.Brand])
-@limiter.limit("100/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_READ', '100')}/minute")
 def read_brands(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     brands = crud.get_brands(db, skip=skip, limit=limit)
     return brands
 
 # Product Endpoints
 @app.post("/products/", response_model=schemas.Product)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def create_product(request: Request, product: schemas.ProductCreate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     return crud.create_product(db=db, product=product)
 
 @app.get("/products/", response_model=List[schemas.Product])
-@limiter.limit("100/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_READ', '100')}/minute")
 def read_products(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     products = crud.get_products(db, skip=skip, limit=limit)
     return products
 
 # Customer Endpoints
 @app.post("/customers/", response_model=schemas.Customer)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def create_customer(request: Request, customer: schemas.CustomerCreate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_customer = crud.get_customer_by_email(db, email=customer.email)
     if db_customer:
@@ -134,14 +133,14 @@ def create_customer(request: Request, customer: schemas.CustomerCreate, db: Sess
     return crud.create_customer(db=db, customer=customer)
 
 @app.get("/customers/", response_model=List[schemas.Customer])
-@limiter.limit("100/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_READ', '100')}/minute")
 def read_customers(request: Request, skip: int = 0, limit: int = 100, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     customers = crud.get_customers(db, skip=skip, limit=limit)
     return customers
 
 
 @app.get("/customers/{email}/licenses", response_model=List[schemas.License])
-@limiter.limit("100/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_READ', '100')}/minute")
 def read_customer_licenses(request: Request, email: str, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_customer = crud.get_customer_by_email(db, email=email)
     if not db_customer:
@@ -151,7 +150,7 @@ def read_customer_licenses(request: Request, email: str, db: Session = Depends(g
 
 # License Endpoints
 @app.post("/licenses/", response_model=schemas.License)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def create_license(request: Request, license: schemas.LicenseCreate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     start_key = license.key if license.key else str(uuid.uuid4())
     # Ensure key validation or auto-generation logic is handled if needed
@@ -165,7 +164,7 @@ def create_license(request: Request, license: schemas.LicenseCreate, db: Session
     return crud.create_license(db=db, license=license)
 
 @app.post("/licenses/validate", response_model=dict)
-@limiter.limit("60/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_LICENSE', '60')}/minute")
 def validate_license(request: Request, validation: schemas.LicenseValidate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_license = crud.get_license_by_key(db, key=validation.key)
     if not db_license:
@@ -186,7 +185,7 @@ def validate_license(request: Request, validation: schemas.LicenseValidate, db: 
     return {"valid": True, "seats_available": db_license.max_seats - db_license.active_seats, "activations_count": db_license.active_seats}
 
 @app.put("/licenses/{license_id}/suspend", response_model=schemas.License)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def suspend_license(request: Request, license_id: int, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_license = crud.get_license(db, license_id=license_id)
     if not db_license:
@@ -194,7 +193,7 @@ def suspend_license(request: Request, license_id: int, db: Session = Depends(get
     return crud.update_license_status(db=db, license_id=license_id, is_active=False)
 
 @app.put("/licenses/{license_id}/resume", response_model=schemas.License)
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def resume_license(request: Request, license_id: int, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     db_license = crud.get_license(db, license_id=license_id)
     if not db_license:
@@ -203,7 +202,7 @@ def resume_license(request: Request, license_id: int, db: Session = Depends(get_
 
 
 @app.post("/licenses/activate", response_model=schemas.Activation)
-@limiter.limit("60/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_LICENSE', '60')}/minute")
 def activate_license(request: Request, activation: schemas.ActivationCreate, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     # 1. Find License
     db_license = crud.get_license_by_key(db, key=activation.license_key)
@@ -232,7 +231,7 @@ def activate_license(request: Request, activation: schemas.ActivationCreate, db:
     return crud.create_activation(db=db, license_id=db_license.id, machine_id=activation.machine_id, friendly_name=activation.friendly_name)
 
 @app.delete("/activations/{activation_id}")
-@limiter.limit("30/minute")
+@limiter.limit(f"{os.getenv('RATE_LIMIT_WRITE', '30')}/minute")
 def delete_activation(request: Request, activation_id: int, db: Session = Depends(get_db), api_key: models.APIKey = Depends(auth.get_api_key)):
     success = crud.delete_activation(db, activation_id=activation_id)
     if not success:

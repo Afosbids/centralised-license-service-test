@@ -7,6 +7,8 @@ import logging
 from . import models, crud
 from .database import SessionLocal
 
+import os
+
 logger = logging.getLogger(__name__)
 
 # API Key header configuration
@@ -15,10 +17,12 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+API_KEY_PREFIX = os.getenv("API_KEY_PREFIX", "lsk_live_")
+
 def generate_api_key() -> str:
     """Generate a cryptographically secure API key."""
     random_key = secrets.token_hex(32)
-    key = f"lsk_live_{random_key}"
+    key = f"{API_KEY_PREFIX}{random_key}"
     logger.info("API key generated")
     return key
 
