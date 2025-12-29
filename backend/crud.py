@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session
 from . import models, schemas
 import uuid
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Brand CRUD
 def get_brand(db: Session, brand_id: int):
@@ -17,6 +20,7 @@ def create_brand(db: Session, brand: schemas.BrandCreate):
     db.add(db_brand)
     db.commit()
     db.refresh(db_brand)
+    logger.info(f"Brand created: {db_brand.name} (ID: {db_brand.id})")
     return db_brand
 
 # Product CRUD
@@ -28,6 +32,7 @@ def create_product(db: Session, product: schemas.ProductCreate):
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
+    logger.info(f"Product created: {db_product.name} (ID: {db_product.id}, Brand ID: {db_product.brand_id})")
     return db_product
 
 # Customer CRUD
@@ -56,6 +61,7 @@ def create_license(db: Session, license: schemas.LicenseCreate):
     db.add(db_license)
     db.commit()
     db.refresh(db_license)
+    logger.info(f"License created for customer ID {db_license.customer_id}, product ID {db_license.product_id}")
     return db_license
 
 def get_licenses_by_customer(db: Session, customer_id: int):
@@ -78,10 +84,12 @@ def create_activation(db: Session, license_id: int, machine_id: str, friendly_na
     
     # Increment seat count on license
     db_license = get_license(db, license_id)
-    db_license.active_seats += 1
-    
+    if db_license:
+        db_license.active_seats += 1
+        
     db.commit()
     db.refresh(db_activation)
+    logger.info(f"License activated on machine {machine_id} for license ID {license_id}")
     return db_activation
 
 def delete_activation(db: Session, activation_id: int):

@@ -178,6 +178,24 @@ Run the rate limiting test script:
 bash test_rate_limit.sh
 ```
 
+## Logging and Monitoring
+
+### Structured Logging
+The system uses structured JSON logging for all API requests and business operations. This allows for easy integration with log aggregation tools like ELK Stack, Datadog, or CloudWatch.
+
+### Configuration
+You can configure logging via environment variables in `backend/.env`:
+- `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (Default: INFO)
+- `LOG_FORMAT`: json or text (Default: json)
+
+### Request Tracing
+Each request is assigned a unique `X-Request-ID`, which is included in both the logs and the response headers. This allows you to trace a specific request spanning across multiple log entries.
+
+### Log Example (JSON)
+```json
+{"timestamp": "2025-12-29T11:45:12Z", "level": "INFO", "logger": "backend.main", "message": "License validated successfully", "request_id": "a1b2c3d4", "license_key": "lsk_...", "duration_ms": 15.2}
+```
+
 ## Manual Setup (Without Docker)
 
 ### Backend Setup

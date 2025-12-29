@@ -7,15 +7,27 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from .logging_config import setup_logging, get_logger
+from .middleware import RequestIDMiddleware, LoggingMiddleware
 import uuid
+
+# Setup logging
+setup_logging()
+logger = get_logger(__name__)
 
 models.Base.metadata.create_all(bind=engine)
 
+logger.info("Database tables created/verified")
+
 # Rate limiting configuration
 limiter = Limiter(key_func=get_remote_address)
-app = FastAPI()
+app = FastAPI(title="Centralized License System", version="1.0.0")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add logging middleware
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(LoggingMiddleware)
 
 # CORS configuration
 origins = [
@@ -41,7 +53,8 @@ def get_db():
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Centralized License System API", "docs": "/docs"}
+    logger.info("Health check endpoint called")
+    return {"message": "Welcome to the Centralized License System API", "docs": "/docs", "status": "healthy"}
 
 # API Key Management Endpoints
 @app.post("/api-keys/", response_model=schemas.APIKeyResponse)
