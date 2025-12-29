@@ -63,3 +63,19 @@ class Activation(Base):
     activated_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     license = relationship("License", back_populates="activations")
+
+
+class APIKey(Base):
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key_hash = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, nullable=False)  # Descriptive name for the key
+    brand_id = Column(Integer, ForeignKey("brands.id"), nullable=True)  # Optional: associate with brand
+    
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)  # Optional expiration
+    
+    brand = relationship("Brand", backref="api_keys")

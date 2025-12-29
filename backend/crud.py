@@ -108,3 +108,47 @@ def update_license_status(db: Session, license_id: int, is_active: bool):
 
 def get_customers(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Customer).offset(skip).limit(limit).all()
+
+# API Key CRUD
+def create_api_key(db: Session, key_hash: str, api_key: schemas.APIKeyCreate):
+    """Create a new API key with hashed key."""
+    db_api_key = models.APIKey(
+        key_hash=key_hash,
+        name=api_key.name,
+        brand_id=api_key.brand_id,
+        expires_at=api_key.expires_at
+    )
+    db.add(db_api_key)
+    db.commit()
+    db.refresh(db_api_key)
+    return db_api_key
+
+def get_api_key(db: Session, api_key_id: int):
+    """Get a specific API key by ID."""
+    return db.query(models.APIKey).filter(models.APIKey.id == api_key_id).first()
+
+def get_all_api_keys(db: Session):
+    """Get all API keys (for validation purposes)."""
+    return db.query(models.APIKey).filter(models.APIKey.is_active == True).all()
+
+def list_api_keys(db: Session, skip: int = 0, limit: int = 100):
+    """List all API keys (for admin purposes)."""
+    return db.query(models.APIKey).offset(skip).limit(limit).all()
+
+def update_api_key_last_used(db: Session, api_key_id: int):
+    """Update the last_used_at timestamp for an API key."""
+    from datetime import datetime
+    db_api_key = get_api_key(db, api_key_id)
+    if db_api_key:
+        db_api_key.last_used_at = datetime.utcnow()
+        db.commit()
+    return db_api_key
+
+def revoke_api_key(db: Session, api_key_id: int):
+    """Revoke (deactivate) an API key."""
+    db_api_key = get_api_key(db, api_key_id)
+    if db_api_key:
+        db_api_key.is_active = False
+        db.commit()
+        db.refresh(db_api_key)
+    return db_api_key

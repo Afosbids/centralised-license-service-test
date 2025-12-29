@@ -11,12 +11,14 @@ A full-stack license management system with FastAPI backend and React frontend, 
 - License Lifecycle Management (Suspend/Resume)
 - Seat-based License Control
 - PostgreSQL Database with Connection Pooling
+- **API Key Authentication** for secure access
 
 ## Tech Stack
 
 - **Backend**: Python, FastAPI, SQLAlchemy, PostgreSQL
 - **Frontend**: React, Vite
 - **Database**: PostgreSQL 15 (SQLite supported for development)
+- **Authentication**: API Key-based authentication
 - **Containerization**: Docker, Docker Compose
 
 ## Quick Start with Docker
@@ -57,6 +59,71 @@ docker-compose down
 5. Stop and remove all data:
 ```bash
 docker-compose down -v
+```
+
+## Authentication
+
+### Overview
+All API endpoints (except `/` and `/docs`) require authentication via API keys. API keys are passed in the `X-API-Key` header.
+
+### Generating an API Key
+
+1. **First API Key** (bootstrap):
+```bash
+curl -X POST http://localhost:8000/api-keys/ \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My First Key", "brand_id": null}'
+```
+
+Response:
+```json
+{
+  "id": 1,
+  "key": "lsk_live_a1b2c3d4e5f6...",  // Save this! Only shown once
+  "name": "My First Key",
+  "brand_id": null,
+  "created_at": "2025-12-29T10:00:00",
+  "expires_at": null
+}
+```
+
+⚠️ **Important**: The plain-text API key is only shown once during creation. Store it securely!
+
+### Using an API Key
+
+Include the API key in the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: lsk_live_a1b2c3d4e5f6..." \
+  http://localhost:8000/brands/
+```
+
+### Managing API Keys
+
+**List all API keys:**
+```bash
+curl -H "X-API-Key: YOUR_KEY" http://localhost:8000/api-keys/
+```
+
+**Revoke an API key:**
+```bash
+curl -X DELETE -H "X-API-Key: YOUR_KEY" \
+  http://localhost:8000/api-keys/1
+```
+
+### Security Best Practices
+
+1. **Never commit API keys** to version control
+2. **Rotate keys regularly** - create new keys and revoke old ones
+3. **Use different keys** for different environments (dev, staging, prod)
+4. **Set expiration dates** for temporary access
+5. **Associate keys with brands** for multi-tenant access control
+
+### Testing Authentication
+
+Run the authentication test script:
+```bash
+bash test_auth.sh
 ```
 
 ## Manual Setup (Without Docker)

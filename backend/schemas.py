@@ -87,3 +87,31 @@ class Activation(ActivationBase):
 
 # Rebuild License model to resolve forward reference
 License.model_rebuild()
+
+# API Key Schemas
+class APIKeyCreate(BaseModel):
+    name: str
+    brand_id: Optional[int] = None
+    expires_at: Optional[datetime] = None
+
+class APIKeyResponse(BaseModel):
+    """Response when creating a new API key - includes the plain key (shown only once)"""
+    id: int
+    key: str  # Plain text key - only returned on creation!
+    name: str
+    brand_id: Optional[int]
+    created_at: datetime
+    expires_at: Optional[datetime]
+
+class APIKey(BaseModel):
+    """API key without the plain key (for listing)"""
+    id: int
+    name: str
+    brand_id: Optional[int]
+    is_active: bool
+    created_at: datetime
+    last_used_at: Optional[datetime]
+    expires_at: Optional[datetime]
+    
+    class Config:
+        from_attributes = True
