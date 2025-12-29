@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: license-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./license_system.db:/app/license_system.db
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - license-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: license-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - license-network
+    restart: unless-stopped
+
+networks:
+  license-network:
+    driver: bridge
