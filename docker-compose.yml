@@ -3,61 +3,65 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: license-db
+    container_name: license_db
     environment:
-      POSTGRES_USER: license_user
-      POSTGRES_PASSWORD: license_password
-      POSTGRES_DB: license_db
+      - POSTGRES_USER=license_user
+      - POSTGRES_PASSWORD=license_password
+      - POSTGRES_DB=license_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     networks:
-      - license-network
+      - license_network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U license_user -d license_db" ]
-      interval: 10s
+      interval: 5s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
 
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    container_name: license-backend
-    ports:
-      - "8000:8000"
+    container_name: license_backend
+    environment:
+      - DATABASE_URL=postgresql://license_user:license_password@db:5432/license_db
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
     volumes:
       - ./backend:/app
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql://license_user:license_password@db:5432/license_db
-    networks:
-      - license-network
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    networks:
+      - license_network
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
-    container_name: license-frontend
-    ports:
-      - "5173:5173"
+    container_name: license_frontend
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - license_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: license_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
+      - frontend
     networks:
-      - license-network
-    restart: unless-stopped
+      - license_network
 
 networks:
-  license-network:
+  license_network:
     driver: bridge
 
 volumes:

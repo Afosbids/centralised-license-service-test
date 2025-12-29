@@ -13,6 +13,7 @@ A full-stack license management system with FastAPI backend and React frontend, 
 - PostgreSQL Database with Connection Pooling
 - **API Key Authentication** for secure access
 - **Rate Limiting** to prevent abuse
+- **HTTPS/SSL** support via Nginx reverse proxy
 
 ## Tech Stack
 
@@ -194,6 +195,57 @@ Each request is assigned a unique `X-Request-ID`, which is included in both the 
 ### Log Example (JSON)
 ```json
 {"timestamp": "2025-12-29T11:45:12Z", "level": "INFO", "logger": "backend.main", "message": "License validated successfully", "request_id": "a1b2c3d4", "license_key": "lsk_...", "duration_ms": 15.2}
+```
+
+## HTTPS and SSL Configuration
+
+### Overview
+The system uses Nginx as a reverse proxy to handle SSL/TLS termination. All traffic is encrypted via HTTPS on port 443, and HTTP traffic on port 80 is automatically redirected to HTTPS.
+
+### Local Development (Self-Signed)
+For local development, you can generate self-signed certificates:
+
+1. Run the certificate generation script:
+```bash
+bash generate_certs.sh
+```
+
+This creates `server.crt` and `server.key` in the `nginx/certs/` directory.
+
+2. Start the services with Docker:
+```bash
+docker-compose up -d
+```
+
+3. Access the application:
+- **Frontend**: https://localhost
+- **Backend API**: https://localhost/api/
+- **Documentation**: https://localhost/docs
+
+> [!NOTE]
+> Since these are self-signed certificates, your browser will show a security warning. You can safely "Proceed to localhost" for development.
+
+### Production SSL (Let's Encrypt)
+In production, it is recommended to use certificates from a trusted CA like Let's Encrypt. You can mount your production certificates into the `license_nginx` container:
+
+```yaml
+  nginx:
+    volumes:
+      - /etc/letsencrypt/live/yourdomain.com/fullchain.pem:/etc/nginx/certs/server.crt:ro
+      - /etc/letsencrypt/live/yourdomain.com/privkey.pem:/etc/nginx/certs/server.key:ro
+```
+
+### Security Headers
+The Nginx configuration includes several security best practices:
+- **HSTS**: Force browsers to use HTTPS for the next 6 months.
+- **Secure Ciphers**: Only modern, secure TLS protocols (1.2+) and ciphers are enabled.
+- **Reverse Proxy**: Protects application servers from direct exposure.
+
+### Testing HTTPS
+
+Run the HTTPS verification script:
+```bash
+bash test_https.sh
 ```
 
 ## Manual Setup (Without Docker)
